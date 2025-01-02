@@ -1,7 +1,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: csr-approver
+  name: kubelet-csr-approver
 rules:
   - apiGroups: ["certificates.k8s.io"]
     resources: ["certificatesigningrequests"]

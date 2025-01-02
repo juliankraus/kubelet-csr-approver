@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: kubelet-csr-approver
+  name: kubelet-csr-approver
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubelet-csr-approver
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: kubelet-csr-approver
+    spec:
+      containers:
+        - image: cfmanteiga/alpine-bash-curl-jq
+          name: kubelet-csr-approver
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 250Mi
+            requests:
+              cpu: 1000m
+              memory: 250Mi
+          command:
+            - bash
+          args:
+            - -c
+            - "while true; do sleep 10; bash /usr/local/bin/approve-csrs.sh; done"
+          volumeMounts:
+            - name: approve-csrs-sh
+              mountPath: /usr/local/bin              
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+      volumes:
+        - name: approve-csrs-sh
+          configMap:
+            name: approve-csrs-sh
+      serviceAccountName: kubelet-csr-approver
