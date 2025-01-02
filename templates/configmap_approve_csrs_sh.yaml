@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: approve-csr-sh
+  namespace: kube-system
+data:
+  approve-csrs.sh: |
+    #!/bin/bash
+    
+    # Fetch list of CSRs
+    CSR_LIST=$(curl -s --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/apis/certificates.k8s.io/v1/certificatesigningrequests)    
+
+    # Filter list of CSRs for status 'Pending' and return them as JSON array
+    CSR_LIST=$(echo "$CSR_LIST" | jq -r '.items[] | select(.status == {})' | jq -s '.')
+    
+    CSR_LIST_LENGTH=$(echo "$CSR_LIST" | jq length)
+    
+    # If there are no CSRs, exit
+    if (( CSR_LIST_LENGTH == 0 )); then
+      echo "No CSRs found."
+      exit 0
+    fi        
+    
+    # Print CSR names
+    echo "##############################################"
+    echo "CSRs to approve:"
+    echo "$CSR_LIST" | jq -r '.[].metadata.name'
+    echo "##############################################"        
+    
+    # Iterate over list of CSRs and approve each one
+    COUNTER=0
+    while [ $COUNTER -le $((CSR_LIST_LENGTH - 1)) ]; do
+      CSR=$(echo "$CSR_LIST" | jq -r ".[$COUNTER]")
+      CSR_NAME=$(echo "$CSR" | jq -r '.metadata.name')
+
+      # Add apiVersion and kind to CSR
+      CSR_WITH_API_VERSION=$(echo "$CSR" | jq -r ". += { \"apiVersion\": \"certificates.k8s.io/v1\"}")
+      CSR_WITH_KIND=$(echo "$CSR_WITH_API_VERSION" | jq -r ". += { \"kind\": \"CertificateSigningRequest\"}")
+
+      # Add approval condition to CSR
+      CSR_WITH_APPROVAL_CONDITION=$(echo "$CSR_WITH_KIND" | jq -r ".status.conditions += [{\"type\": \"Approved\", \"status\": \"True\", \"lastTransitionTime\": \"$(date +%FT%TZ)\", \"message\": \"Approved by csr-approver\"}]")    
+
+      echo "##############################################"
+      echo "Approving CSR: $CSR_NAME"
+      HTTP_CODE=$(curl -w '%{http_code}' -s -o /dev/null --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -X PUT -d "$(echo "$CSR_WITH_APPROVAL_CONDITION")" -H "Content-Type: application/json" -H "Accept: application/json" https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/apis/certificates.k8s.io/v1/certificatesigningrequests/$CSR_NAME/approval)            
+      
+      echo "HTTP Response Code: $HTTP_CODE"
+      echo "##############################################"
+      COUNTER=$((COUNTER+1))
+    done
+    
+    # Exit with success
+    exit 0
