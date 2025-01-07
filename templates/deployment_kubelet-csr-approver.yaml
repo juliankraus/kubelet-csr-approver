@@ -21,7 +21,7 @@ spec:
         app: kubelet-csr-approver
     spec:
       containers:
-        - image: cfmanteiga/alpine-bash-curl-jq
+        - image: joundso/alpine-bash-curl-ssl-jq:3.18
           name: kubelet-csr-approver
           resources:
             limits:

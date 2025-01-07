@@ -13,3 +13,6 @@ rules:
     resourceNames: ["kubernetes.io/kubelet-serving"]
     resources: ["signers"]
     verbs: ["approve"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get"]
