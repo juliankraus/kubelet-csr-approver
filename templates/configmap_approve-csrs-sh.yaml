@@ -70,12 +70,12 @@ data:
         break
       fi
 
+      IP_ADDRESS_OF_NODE=""
       for subjAltName in "${SUBJECT_ALTERNATIVE_NAME_ARRAY[@]}"; do
         IFS=':' read -r -a SPLIT_ARRAY <<< "$subjAltName"
-        IP_ADDRESS_OF_NODE=""
         if [[ ${SPLIT_ARRAY[0]} == *"DNS"* ]] ; then
           # Ensure node exists in the cluster
-          HTTP_CODE=$(curl -w '%{http_code}' -s -o /dev/null --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -X GET "Content-Type: application/json" -H "Accept: application/json" "https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/nodes/${SPLIT_ARRAY[1]}")
+          HTTP_CODE=$(curl -w '%{http_code}' -s -o /dev/null -X GET --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" -H "Content-Type: application/json" -H "Accept: application/json" "https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT/api/v1/nodes/${SPLIT_ARRAY[1]}")
           if (( HTTP_CODE != 200 )); then
             echo "Cluster has no node ${SPLIT_ARRAY[1]}. Subject Alternative Name DNS invalid. Won't approve."
             break 2
