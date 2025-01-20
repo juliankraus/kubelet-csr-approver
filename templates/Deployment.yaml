@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ include "kubelet-csr-approver.fullname" . }}
+  name: {{ include "kubelet-csr-approver.fullname" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "kubelet-csr-approver.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "kubelet-csr-approver.fullname" . }}
+    spec:
+      containers:
+        - image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          name: {{ include "kubelet-csr-approver.fullname" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: {{ toYaml .Values.command | nindent 12 }}
+          args: {{ toYaml .Values.args | nindent 12 }}
+          volumeMounts:
+            - name: {{ include "kubelet-csr-approver.fullname" . }}
+              mountPath: {{ .Values.configMap.mountPath }}
+      tolerations: {{ toYaml .Values.tolerations | nindent 8 }}
+      volumes:
+        - name: {{ include "kubelet-csr-approver.fullname" . }}
+          configMap:
+            name: {{ include "kubelet-csr-approver.fullname" . }}
+      serviceAccountName: {{ include "kubelet-csr-approver.fullname" . }}
